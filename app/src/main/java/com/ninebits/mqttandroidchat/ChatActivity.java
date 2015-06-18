@@ -3,10 +3,10 @@ package com.ninebits.mqttandroidchat;
 import android.content.SharedPreferences;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -20,14 +20,19 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.MqttSecurityException;
+import org.eclipse.paho.client.mqttv3.internal.wire.MqttWireMessage;
 
 
-public class ChatActivity extends ActionBarActivity implements MqttCallback, MqttTraceHandler, IMqttActionListener {
+public class ChatActivity extends ActionBarActivity implements MqttCallback, MqttTraceHandler,
+        IMqttActionListener {
 
     public static final String CLIENT_ID = "Client id";
     private TextView messages;
     private EditText message;
     private ScrollView scrollView;
+    private MqttAndroidClient client;
+    private boolean isConnecting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +50,6 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
         }
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -54,12 +58,13 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
     }
 
     private void connect() throws MqttException {
-        SharedPreferences prefs = getSharedPreferences("default", MODE_PRIVATE);
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
 
         if (prefs.contains(CLIENT_ID) == false) {
             String clientId = java.util.UUID.randomUUID().toString();
-            prefs.edit().putString(CLIENT_ID, clientId);
-            prefs.edit().commit();
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString(CLIENT_ID, clientId);
+            editor.commit();
         }
 
         String clientId = prefs.getString(CLIENT_ID, "");
@@ -69,7 +74,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
 
         String uri = "tcp://" + server + ":" + port;
 
-        MqttAndroidClient client = new MqttAndroidClient(this, uri, clientId);
+        client = new MqttAndroidClient(this, uri, clientId);
         MqttConnectOptions conOpt = new MqttConnectOptions();
 
         conOpt.setCleanSession(cleanSession);
@@ -78,10 +83,32 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
         conOpt.setUserName("android phone");
         conOpt.setPassword("android phone".toCharArray());
 
-        client.setCallback(this);
-        client.setTraceCallback(this);
-        client.connect(conOpt, null, this);
+        getClient().setCallback(this);
+        getClient().setTraceCallback(this);
 
+        isConnecting = true;
+        getClient().connect(conOpt, null, this);
+    }
+
+    /**
+     * Subscribe to a topic that the user has specified
+     */
+    private void subscribe()
+    {
+        String topic = "office";
+        int qos = 2;
+
+        try {
+            String[] topics = new String[1];
+            topics[0] = topic;
+            getClient().subscribe(topic, qos, null, this);
+        }
+        catch (MqttSecurityException e) {
+            e.printStackTrace();
+        }
+        catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -100,8 +127,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
     }
 
     public void sendMessage(View view) {
-        messages.setText(messages.getText() + "\n" + message.getText());
-        scrollView.fullScroll(View.FOCUS_DOWN);
+
     }
 
     @Override
@@ -111,7 +137,8 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
 
     @Override
     public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
-
+        messages.setText(messages.getText() + "\n" + mqttMessage.toString());
+        scrollView.fullScroll(View.FOCUS_DOWN);
     }
 
     @Override
@@ -136,11 +163,22 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
 
     @Override
     public void onSuccess(IMqttToken iMqttToken) {
-
+        if(isConnecting) {
+            isConnecting = false;
+            subscribe();
+        }
     }
 
     @Override
     public void onFailure(IMqttToken iMqttToken, Throwable throwable) {
+        int i = 0;
+    }
 
+    public MqttAndroidClient getClient() {
+        return client;
+    }
+
+    public void setClient(MqttAndroidClient client) {
+        this.client = client;
     }
 }
