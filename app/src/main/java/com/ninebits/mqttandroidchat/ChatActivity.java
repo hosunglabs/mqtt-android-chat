@@ -1,17 +1,48 @@
 package com.ninebits.mqttandroidchat;
 
+import android.content.SharedPreferences;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AutoCompleteTextView;
+import android.widget.EditText;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.android.service.MqttTraceHandler;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 
-public class ChatActivity extends ActionBarActivity {
+public class ChatActivity extends ActionBarActivity implements MqttCallback, MqttTraceHandler, IMqttActionListener {
+
+    public static final String CLIENT_ID = "Client id";
+    private TextView messages;
+    private EditText message;
+    private ScrollView scrollView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
+
+        messages = (TextView) findViewById(R.id.messages);
+        message = (EditText) findViewById(R.id.message);
+        scrollView = (ScrollView) findViewById(R.id.textAreaScroller);
+
+        try {
+            connect();
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -20,6 +51,37 @@ public class ChatActivity extends ActionBarActivity {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_chat, menu);
         return true;
+    }
+
+    private void connect() throws MqttException {
+        SharedPreferences prefs = getSharedPreferences("default", MODE_PRIVATE);
+
+        if (prefs.contains(CLIENT_ID) == false) {
+            String clientId = java.util.UUID.randomUUID().toString();
+            prefs.edit().putString(CLIENT_ID, clientId);
+            prefs.edit().commit();
+        }
+
+        String clientId = prefs.getString(CLIENT_ID, "");
+        String server = "192.168.1.2";
+        String port = "1883";
+        boolean cleanSession = false;
+
+        String uri = "tcp://" + server + ":" + port;
+
+        MqttAndroidClient client = new MqttAndroidClient(this, uri, clientId);
+        MqttConnectOptions conOpt = new MqttConnectOptions();
+
+        conOpt.setCleanSession(cleanSession);
+        conOpt.setConnectionTimeout(10000);
+        conOpt.setKeepAliveInterval(120000);
+        conOpt.setUserName("android phone");
+        conOpt.setPassword("android phone".toCharArray());
+
+        client.setCallback(this);
+        client.setTraceCallback(this);
+        client.connect(conOpt, null, this);
+
     }
 
     @Override
@@ -35,5 +97,50 @@ public class ChatActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public void sendMessage(View view) {
+        messages.setText(messages.getText() + "\n" + message.getText());
+        scrollView.fullScroll(View.FOCUS_DOWN);
+    }
+
+    @Override
+    public void connectionLost(Throwable throwable) {
+
+    }
+
+    @Override
+    public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
+
+    }
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
+
+    }
+
+    @Override
+    public void traceDebug(String source, String message) {
+
+    }
+
+    @Override
+    public void traceError(String source, String message) {
+
+    }
+
+    @Override
+    public void traceException(String source, String message, Exception e) {
+
+    }
+
+    @Override
+    public void onSuccess(IMqttToken iMqttToken) {
+
+    }
+
+    @Override
+    public void onFailure(IMqttToken iMqttToken, Throwable throwable) {
+
     }
 }
