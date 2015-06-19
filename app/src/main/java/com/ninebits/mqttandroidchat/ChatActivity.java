@@ -28,6 +28,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
         IMqttActionListener {
 
     public static final String CLIENT_ID = "Client id";
+    private static final String TAG = "ChatActivity";
     private TextView messages;
     private EditText message;
     private ScrollView scrollView;
@@ -79,7 +80,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
 
         conOpt.setCleanSession(cleanSession);
         conOpt.setConnectionTimeout(10000);
-        conOpt.setKeepAliveInterval(120000);
+        conOpt.setKeepAliveInterval(600000);
         conOpt.setUserName("android phone");
         conOpt.setPassword("android phone".toCharArray());
 
@@ -127,7 +128,25 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
     }
 
     public void sendMessage(View view) {
+        String topic = "office";
+        String textToSend = this.message.getText().toString();
+        int qos = 2;
 
+        boolean retained = false;
+
+        String[] args = new String[2];
+        args[0] = textToSend;
+        args[1] = topic+";qos:"+qos+";retained:"+retained;
+
+        try {
+            client.publish(topic, textToSend.getBytes(), qos, retained, null, this);
+        }
+        catch (MqttSecurityException e) {
+            e.printStackTrace();
+        }
+        catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -171,7 +190,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
 
     @Override
     public void onFailure(IMqttToken iMqttToken, Throwable throwable) {
-        int i = 0;
+        Log.e(TAG, "something went wrong: " + throwable.toString());
     }
 
     public MqttAndroidClient getClient() {
