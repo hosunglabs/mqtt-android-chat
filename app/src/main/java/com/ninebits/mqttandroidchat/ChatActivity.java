@@ -1,6 +1,11 @@
 package com.ninebits.mqttandroidchat;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -69,7 +74,7 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
         }
 
         String clientId = prefs.getString(CLIENT_ID, "");
-        String server = "192.168.1.2";
+        String server = "192.168.0.21";
         String port = "1883";
         boolean cleanSession = false;
 
@@ -147,6 +152,8 @@ public class ChatActivity extends ActionBarActivity implements MqttCallback, Mqt
         catch (MqttException e) {
             e.printStackTrace();
         }
+
+        message.setText("");
     }
 
     @Override
